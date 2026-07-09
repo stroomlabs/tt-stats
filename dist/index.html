@@ -78,10 +78,9 @@ footer{max-width:1200px;margin:0 auto;padding:20px;color:var(--stroom-slate);fon
 <main id="view"><div class="empty">Loading engine…</div></main>
 <footer>STROOMHELIX · STATS ENGINE v1 (DR-064) · computed from published, provenance-tracked claims · Trackside Topics archive · built 2026-07-08 · stroomlabs.com</footer>
 <script>
-const DATA='https://xazalbajuvqbqgkgyagf.supabase.co/storage/v1/object/public/tt-stats/';
 const D={},cache={};
 const unpack=j=>j.r.map(r=>Object.fromEntries(j.k.map((k,i)=>[k,r[i]])));
-async function load(n){if(cache[n])return cache[n];const j=await(await fetch(DATA+n+'.json')).json();cache[n]=unpack(j);return cache[n]}
+async function load(n){if(cache[n])return cache[n];const j=await(await fetch('data/'+n+'.json')).json();cache[n]=unpack(j);return cache[n]}
 const fmt=n=>n==null?'—':Number(n).toLocaleString();
 const title=s=>(s||'').replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
 let VENUE='berlin-raceway',TAB='leaders',DRIVER=null,charts=[];
@@ -216,7 +215,7 @@ q.oninput=async()=>{if(!IDX)await initSearch();const t=q.value.trim().toLowerCas
 function pick(s){qr.classList.remove('open');q.value='';openDriver(s)}
 document.addEventListener('click',e=>{if(!e.target.closest('.searchwrap'))qr.classList.remove('open')});
 // boot
-(async()=>{const meta=await(await fetch(DATA+'meta.json')).json();
+(async()=>{const meta=await(await fetch('data/meta.json')).json();
  const sel=document.getElementById('venueSel');
  sel.innerHTML=meta.venues.map(x=>`<option value="${x}" ${x===VENUE?'selected':''}>${title(x)}</option>`).join('');
  sel.onchange=()=>{VENUE=sel.value;DRIVER=null;render()};

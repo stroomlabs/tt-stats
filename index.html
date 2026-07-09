@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-vertical="racing">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stroom Racing — TT Stats Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--stroom-black:#000;--stroom-obsidian:#0A0D0F;--stroom-slate:#565F64;--stroom-silver:#C8CCCE;--stroom-alabaster:#F5F5F7;--stroom-white:#FFF;
+--ease-out:cubic-bezier(.4,0,.2,1);--ease-spring:cubic-bezier(.16,1,.3,1);--ease-sharp:cubic-bezier(.4,0,1,1)}
+[data-theme="dark"]{--surface-base:var(--stroom-black);--page-bg:linear-gradient(145deg,#000 0%,#0A0D0F 100%);--surface-elevated:#111416;--surface-hover:#1A1F22;
+--text-primary:var(--stroom-alabaster);--text-secondary:var(--stroom-silver);--glass-bg:rgba(0,0,0,.75);--glow-opacity:.15}
+[data-vertical="racing"]{--accent:#E53935;--accent-hover:#C62828;--text-on-accent:#FFF;--stealth:rgba(229,57,53,.05);--glow:rgba(229,57,53,.15)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Archivo',system-ui,sans-serif;background:var(--page-bg);background-attachment:fixed;color:var(--text-primary);min-height:100vh;-webkit-font-smoothing:antialiased}
+.mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+header{position:sticky;top:0;z-index:50;background:var(--glass-bg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08)}
+.hwrap{max-width:1200px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.wordmark{font-weight:900;font-size:20px;letter-spacing:.5px;white-space:nowrap}
+.wordmark .r{color:var(--accent)}
+.tag{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-secondary);letter-spacing:2px;text-transform:uppercase;border:1px solid rgba(255,255,255,.12);padding:3px 8px;border-radius:4px}
+.hctl{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+select,input[type=search]{background:var(--surface-elevated);color:var(--text-primary);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;font-family:'Archivo';font-size:14px;outline:none;transition:border-color .2s var(--ease-out)}
+select:focus,input:focus{border-color:var(--accent)}
+input[type=search]{width:230px}
+.searchwrap{position:relative}
+.results{position:absolute;top:calc(100% + 6px);right:0;width:320px;max-height:340px;overflow:auto;background:var(--surface-elevated);border:1px solid rgba(255,255,255,.12);border-radius:10px;box-shadow:0 0 24px var(--glow);display:none}
+.results.open{display:block}
+.results div{padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;gap:10px;font-size:14px;transition:background .1s}
+.results div:hover{background:var(--surface-hover)}
+.results .m{color:var(--text-secondary);font-size:12px}
+nav{max-width:1200px;margin:0 auto;padding:0 20px;display:flex;gap:4px;overflow-x:auto}
+nav button{background:none;border:none;color:var(--text-secondary);font-family:'Archivo';font-weight:600;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;padding:12px 16px;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s var(--ease-out);white-space:nowrap}
+nav button:hover{color:var(--text-primary)}
+nav button.on{color:var(--accent);border-bottom-color:var(--accent)}
+main{max-width:1200px;margin:0 auto;padding:28px 20px 80px}
+.card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px;position:relative;animation:enter .5s var(--ease-spring)}
+.card::after{content:'';position:absolute;inset:0;border-radius:14px;pointer-events:none;box-shadow:0 0 32px var(--glow);opacity:0;transition:opacity .3s var(--ease-out)}
+.card:hover::after{opacity:1}
+@keyframes enter{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.grid{display:grid;gap:16px}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:16px}
+.kpi{background:var(--stealth);border:1px solid rgba(229,57,53,.15);border-radius:12px;padding:14px 16px;text-align:center}
+.kpi .v{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;font-size:26px;font-weight:600;color:var(--accent)}
+.kpi .l{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-secondary);margin-top:4px}
+h2{font-weight:900;font-size:22px;letter-spacing:.5px;margin-bottom:14px}
+h3{font-weight:700;font-size:15px;margin-bottom:10px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-secondary);text-align:left;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.12);cursor:pointer;user-select:none;white-space:nowrap}
+th:hover{color:var(--accent)}
+th.num,td.num{text-align:right;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.05)}
+tr:hover td{background:var(--stealth)}
+td a{color:var(--text-primary);text-decoration:none;font-weight:600;cursor:pointer}
+td a:hover{color:var(--accent)}
+.rank{color:var(--accent);font-weight:600}
+.controls{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.controls label{font-size:12px;color:var(--text-secondary);letter-spacing:1px;text-transform:uppercase}
+.chartbox{height:340px;margin-bottom:20px}
+button.pill{background:var(--surface-elevated);border:1px solid rgba(255,255,255,.1);color:var(--text-primary);border-radius:20px;padding:6px 14px;font-family:'Archivo';font-size:12px;cursor:pointer;transition:all .1s var(--ease-out)}
+button.pill:active{transform:scale(.96)}
+button.pill.on{background:var(--accent);border-color:var(--accent);color:var(--text-on-accent)}
+.empty{color:var(--text-secondary);padding:40px;text-align:center;font-size:14px}
+footer{max-width:1200px;margin:0 auto;padding:20px;color:var(--stroom-slate);font-size:11px;font-family:'IBM Plex Mono',monospace;border-top:1px solid rgba(255,255,255,.06)}
+.back{color:var(--accent);cursor:pointer;font-size:13px;font-weight:600;margin-bottom:12px;display:inline-block}
+@media(max-width:640px){input[type=search]{width:150px}.chartbox{height:260px}}
+</style></head>
+<body>
+<header><div class="hwrap">
+<div class="wordmark">STROOM<span class="r">RACING</span></div><div class="tag">TT Stats Engine</div>
+<div class="hctl">
+<select id="venueSel" title="Track"></select>
+<div class="searchwrap"><input type="search" id="q" placeholder="Search drivers…" autocomplete="off"><div class="results" id="qr"></div></div>
+</div></div>
+<nav id="tabs"></nav>
+</header>
+<main id="view"><div class="empty">Loading engine…</div></main>
+<footer>STROOMHELIX · STATS ENGINE v1 (DR-064) · computed from published, provenance-tracked claims · Trackside Topics archive · built 2026-07-08 · stroomlabs.com</footer>
+<script>
+const D={},cache={};
+const unpack=j=>j.r.map(r=>Object.fromEntries(j.k.map((k,i)=>[k,r[i]])));
+async function load(n){if(cache[n])return cache[n];const j=await(await fetch('data/'+n+'.json')).json();cache[n]=unpack(j);return cache[n]}
+const fmt=n=>n==null?'—':Number(n).toLocaleString();
+const title=s=>(s||'').replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+let VENUE='berlin-raceway',TAB='leaders',DRIVER=null,charts=[];
+function killCharts(){charts.forEach(c=>c.destroy());charts=[]}
+const ACC='#E53935',SIL='#C8CCCE',SL='#565F64';
+Chart.defaults.font.family="'IBM Plex Mono',monospace";Chart.defaults.color=SIL;Chart.defaults.borderColor='rgba(255,255,255,.08)';
+
+const TABS=[['leaders','Leaders'],['drivers','Drivers'],['records','Track Records'],['streaks','Win Streaks'],['divisions','Divisions']];
+function nav(){document.getElementById('tabs').innerHTML=TABS.map(([k,l])=>`<button class="${TAB===k?'on':''}" onclick="go('${k}')">${l}</button>`).join('')}
+function go(t){TAB=t;DRIVER=null;render()}
+function sortable(rows,cols,defKey,defDesc=true){
+ let key=defKey,desc=defDesc;
+ const draw=()=>{
+  const sorted=[...rows].sort((a,b)=>{const x=a[key]??-1,y=b[key]??-1;return(typeof x=='string'?x.localeCompare(y):x-y)*(desc?-1:1)});
+  return`<table><thead><tr>${cols.map(c=>`<th class="${c.num?'num':''}" data-k="${c.k}">${c.l}${key===c.k?(desc?' ↓':' ↑'):''}</th>`).join('')}</tr></thead><tbody>${
+   sorted.slice(0,300).map((r,i)=>`<tr>${cols.map(c=>c.render?`<td class="${c.num?'num':''}">${c.render(r,i)}</td>`:`<td class="${c.num?'num':''}">${c.num?fmt(r[c.k]):r[c.k]??'—'}</td>`).join('')}</tr>`).join('')}</tbody></table>`};
+ setTimeout(()=>{document.querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(key===k)desc=!desc;else{key=k;desc=true};document.getElementById('tbl').innerHTML=draw();}),0});
+ return`<div id="tbl">${draw()}</div>`}
+
+async function render(){
+ killCharts();nav();const v=document.getElementById('view');v.innerHTML='<div class="empty">Loading…</div>';
+ if(TAB==='leaders')return leaders(v);
+ if(TAB==='drivers')return DRIVER?profile(v):driversHome(v);
+ if(TAB==='records')return records(v);
+ if(TAB==='streaks')return streaks(v);
+ if(TAB==='divisions')return divisions(v);
+}
+async function leaders(v){
+ const c=(await load('careers')).filter(r=>r.venue_slug===VENUE);
+ const tot={s:c.reduce((a,r)=>a+r.starts,0),w:c.reduce((a,r)=>a+r.feature_wins,0),d:c.length};
+ v.innerHTML=`<div class="grid kpis">
+  <div class="kpi"><div class="v mono">${fmt(tot.d)}</div><div class="l">Drivers</div></div>
+  <div class="kpi"><div class="v mono">${fmt(tot.s)}</div><div class="l">Starts Logged</div></div>
+  <div class="kpi"><div class="v mono">${fmt(tot.w)}</div><div class="l">Feature Wins</div></div></div>
+ <div class="card"><h2>All-Time Leaders — ${title(VENUE)}</h2>
+ <div class="controls"><label>Min starts</label><input type="range" id="ms" min="0" max="100" value="10" style="accent-color:var(--accent)"><span class="mono" id="msv">10</span></div>
+ <div id="lt"></div></div>`;
+ const cols=[{k:'rk',l:'#',render:(r,i)=>`<span class="rank mono">${i+1}</span>`},
+  {k:'driver_name',l:'Driver',render:r=>`<a onclick="openDriver('${r.driver_slug}')">${r.driver_name}</a>`},
+  {k:'feature_wins',l:'Wins',num:1},{k:'starts',l:'Starts',num:1},{k:'top5',l:'Top 5',num:1},{k:'top10',l:'Top 10',num:1},
+  {k:'fast_qualifiers',l:'Fast Times',num:1},{k:'heat_wins',l:'Heats',num:1},{k:'seasons_active',l:'Seasons',num:1},
+  {k:'first_event',l:'First'},{k:'last_event',l:'Last'}];
+ const draw=()=>{const min=+document.getElementById('ms').value;document.getElementById('msv').textContent=min;
+  document.getElementById('lt').innerHTML=sortable(c.filter(r=>r.starts>=min),cols,'feature_wins')};
+ draw();document.getElementById('ms').oninput=draw;
+}
+async function driversHome(v){
+ const c=(await load('careers')).filter(r=>r.venue_slug===VENUE&&r.feature_wins>0).slice(0,24);
+ v.innerHTML=`<div class="card"><h2>Drivers</h2><p style="color:var(--text-secondary);font-size:14px;margin-bottom:16px">Search any driver above, or jump into a winner at ${title(VENUE)}:</p>
+ <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">${c.map(r=>`
+  <div class="card" style="cursor:pointer;padding:14px" onclick="openDriver('${r.driver_slug}')">
+   <div style="font-weight:700">${r.driver_name}</div>
+   <div class="mono" style="color:var(--accent);font-size:13px;margin-top:4px">${r.feature_wins}W · ${r.starts} starts</div>
+   <div class="mono" style="color:var(--text-secondary);font-size:11px;margin-top:2px">${(r.first_event||'').slice(0,4)}–${(r.last_event||'').slice(0,4)}</div></div>`).join('')}</div></div>`
+}
+async function openDriver(slug){TAB='drivers';DRIVER=slug;render()}
+async function profile(v){
+ const[c,s,st]=await Promise.all([load('careers'),load('seasons'),load('streaks')]);
+ const me=c.filter(r=>r.driver_slug===DRIVER);
+ const line=me.find(r=>r.venue_slug===VENUE)||me[0];if(!line){v.innerHTML='<div class="empty">No data.</div>';return}
+ const name=line.driver_name,vs=line.venue_slug;
+ const sea=s.filter(r=>r.driver_slug===DRIVER&&r.venue_slug===vs).sort((a,b)=>a.season-b.season||(a.division||'').localeCompare(b.division||''));
+ const bySeason={};sea.forEach(r=>{const k=r.season;bySeason[k]=bySeason[k]||{w:0,s:0};bySeason[k].w+=r.wins||0;bySeason[k].s+=r.starts||0});
+ const yrs=Object.keys(bySeason).sort();
+ const myst=st.filter(r=>r.driver_slug===DRIVER&&r.venue_slug===vs);
+ v.innerHTML=`<span class="back" onclick="go('drivers')">← All drivers</span>
+ <h2 style="font-size:30px">${name} <span style="color:var(--text-secondary);font-size:15px;font-weight:400">@ ${title(vs)}</span></h2>
+ <div class="grid kpis">
+  <div class="kpi"><div class="v">${fmt(line.feature_wins)}</div><div class="l">Feature Wins</div></div>
+  <div class="kpi"><div class="v">${fmt(line.starts)}</div><div class="l">Starts</div></div>
+  <div class="kpi"><div class="v">${fmt(line.top5)}</div><div class="l">Top 5s</div></div>
+  <div class="kpi"><div class="v">${fmt(line.fast_qualifiers)}</div><div class="l">Fast Times</div></div>
+  <div class="kpi"><div class="v">${fmt(line.heat_wins)}</div><div class="l">Heat Wins</div></div>
+  <div class="kpi"><div class="v">${line.seasons_active}</div><div class="l">Seasons</div></div></div>
+ <div class="card" style="margin-bottom:16px"><h3>Season Trend — Wins vs Starts</h3><div class="chartbox"><canvas id="ch1"></canvas></div></div>
+ ${myst.length?`<div class="card" style="margin-bottom:16px"><h3>Win Streaks</h3><table><thead><tr><th>Division</th><th class="num">Length</th><th>Span</th></tr></thead><tbody>${myst.map(r=>`<tr><td>${title(r.division)}</td><td class="num" style="color:var(--accent);font-weight:600">${r.streak_length} in a row</td><td class="mono">${r.streak_start} → ${r.streak_end}</td></tr>`).join('')}</tbody></table></div>`:''}
+ <div class="card"><h3>Season-by-Season</h3><table><thead><tr><th>Season</th><th>Division</th><th class="num">Starts</th><th class="num">Wins</th><th class="num">FQ</th><th class="num">Heats</th><th class="num">Avg Fin</th><th class="num">Points</th><th class="num">Rank</th></tr></thead><tbody>${
+  sea.map(r=>`<tr><td class="mono">${r.season}</td><td>${title(r.division||'')}</td><td class="num">${fmt(r.starts)}</td><td class="num" style="color:var(--accent)">${fmt(r.wins)}</td><td class="num">${fmt(r.fq)}</td><td class="num">${fmt(r.heats)}</td><td class="num">${r.avg_finish??'—'}</td><td class="num">${fmt(r.season_points)}</td><td class="num">${r.season_position??'—'}</td></tr>`).join('')}</tbody></table></div>`;
+ charts.push(new Chart(ch1,{type:'bar',data:{labels:yrs,datasets:[
+  {label:'Wins',data:yrs.map(y=>bySeason[y].w),backgroundColor:ACC,borderRadius:4},
+  {label:'Starts',data:yrs.map(y=>bySeason[y].s),type:'line',borderColor:SIL,backgroundColor:SIL,tension:.3,pointRadius:2}]},
+  options:{maintainAspectRatio:false,plugins:{legend:{labels:{boxWidth:12}}},scales:{y:{beginAtZero:true}}}}));
+}
+async function records(v){
+ const r=(await load('records')).filter(x=>x.venue_slug===VENUE);
+ if(!r.length){v.innerHTML='<div class="empty">No timed track records for this venue yet.</div>';return}
+ const cfgs=[...new Set(r.map(x=>x.track_config))];let cfg=cfgs[0];
+ v.innerHTML=`<div class="card"><h2>Track Record Progression — ${title(VENUE)}</h2>
+ <div class="controls" id="cfgs">${cfgs.map(c=>`<button class="pill ${c===cfg?'on':''}" data-c="${c}">${c}</button>`).join('')}</div>
+ <div class="chartbox"><canvas id="ch2"></canvas></div><div id="rt"></div></div>`;
+ const draw=()=>{killCharts();const rows=r.filter(x=>x.track_config===cfg);
+  document.getElementById('rt').innerHTML=`<table><thead><tr><th>Date</th><th>Driver</th><th class="num">Time</th><th class="num">Δ vs prev</th><th>Tie</th></tr></thead><tbody>${
+   rows.map(x=>`<tr><td class="mono">${x.record_date}</td><td>${title(x.driver_slug||'')}</td><td class="num" style="color:var(--accent);font-weight:600">${x.time_seconds}</td><td class="num">${x.delta_vs_previous??'—'}</td><td>${x.tie?'=':''}</td></tr>`).join('')}</tbody></table>`;
+  charts.push(new Chart(ch2,{type:'line',data:{labels:rows.map(x=>x.record_date),datasets:[{label:'Record (s)',data:rows.map(x=>x.time_seconds),borderColor:ACC,backgroundColor:'rgba(229,57,53,.2)',tension:0,pointRadius:5,pointBackgroundColor:ACC,fill:true}]},
+   options:{maintainAspectRatio:false,scales:{y:{reverse:false}}}}));
+  document.querySelectorAll('#cfgs .pill').forEach(b=>b.className='pill '+(b.dataset.c===cfg?'on':''))};
+ draw();document.getElementById('cfgs').onclick=e=>{if(e.target.dataset.c){cfg=e.target.dataset.c;draw()}};
+}
+async function streaks(v){
+ const st=(await load('streaks')).filter(r=>r.venue_slug===VENUE);
+ v.innerHTML=`<div class="card"><h2>Consecutive Feature-Win Streaks — ${title(VENUE)}</h2><p style="color:var(--text-secondary);font-size:13px;margin-bottom:14px">Computed gaps-and-islands over every start in the graph. Minimum 2 straight.</p>${
+  sortable(st,[{k:'rk',l:'#',render:(r,i)=>`<span class="rank mono">${i+1}</span>`},
+  {k:'driver_name',l:'Driver',render:r=>`<a onclick="openDriver('${r.driver_slug}')">${r.driver_name}</a>`},
+  {k:'division',l:'Division',render:r=>title(r.division)},{k:'streak_length',l:'Streak',num:1},
+  {k:'streak_start',l:'Start'},{k:'streak_end',l:'End'}],'streak_length')}</div>`
+}
+async function divisions(v){
+ const a=(await load('activity')).filter(r=>r.venue_slug===VENUE);
+ const divs=[...new Set(a.map(x=>x.division).filter(Boolean))].sort();let dv=divs.includes('super-late-model')?'super-late-model':divs[0];
+ v.innerHTML=`<div class="card"><h2>Division Health — ${title(VENUE)}</h2>
+ <div class="controls"><select id="dsel">${divs.map(d=>`<option ${d===dv?'selected':''}>${d}</option>`).join('')}</select></div>
+ <div class="chartbox"><canvas id="ch3"></canvas></div><div id="dt"></div></div>`;
+ const draw=()=>{killCharts();const rows=a.filter(x=>x.division===dv).sort((x,y)=>x.season-y.season);
+  document.getElementById('dt').innerHTML=`<table><thead><tr><th class="num">Season</th><th class="num">Events</th><th class="num">Distinct Drivers</th><th class="num">Avg Field</th></tr></thead><tbody>${
+   rows.map(x=>`<tr><td class="num">${x.season}</td><td class="num">${x.events}</td><td class="num">${x.distinct_drivers}</td><td class="num" style="color:var(--accent)">${x.avg_field_size}</td></tr>`).join('')}</tbody></table>`;
+  charts.push(new Chart(ch3,{type:'line',data:{labels:rows.map(x=>x.season),datasets:[
+   {label:'Avg field size',data:rows.map(x=>x.avg_field_size),borderColor:ACC,tension:.3,yAxisID:'y'},
+   {label:'Distinct drivers',data:rows.map(x=>x.distinct_drivers),borderColor:SIL,tension:.3,yAxisID:'y'},
+   {label:'Events',data:rows.map(x=>x.events),borderColor:SL,borderDash:[4,4],tension:.3,yAxisID:'y'}]},
+   options:{maintainAspectRatio:false}}))};
+ draw();document.getElementById('dsel').onchange=e=>{dv=e.target.value;draw()};
+}
+// search
+let IDX=null;
+async function initSearch(){const c=await load('careers');const m={};c.forEach(r=>{const k=r.driver_slug;if(!m[k])m[k]={n:r.driver_name,s:k,w:0,st:0};m[k].w+=r.feature_wins;m[k].st+=r.starts});IDX=Object.values(m)}
+const q=document.getElementById('q'),qr=document.getElementById('qr');
+q.oninput=async()=>{if(!IDX)await initSearch();const t=q.value.trim().toLowerCase();
+ if(t.length<2){qr.classList.remove('open');return}
+ const hits=IDX.filter(d=>d.n.toLowerCase().includes(t)).sort((a,b)=>b.w-a.w).slice(0,12);
+ qr.innerHTML=hits.map(d=>`<div onclick="pick('${d.s}')"><span>${d.n}</span><span class="m mono">${d.w}W · ${d.st}S</span></div>`).join('')||'<div class="m" style="padding:12px">No match</div>';
+ qr.classList.add('open')};
+function pick(s){qr.classList.remove('open');q.value='';openDriver(s)}
+document.addEventListener('click',e=>{if(!e.target.closest('.searchwrap'))qr.classList.remove('open')});
+// boot
+(async()=>{const meta=await(await fetch('data/meta.json')).json();
+ const sel=document.getElementById('venueSel');
+ sel.innerHTML=meta.venues.map(x=>`<option value="${x}" ${x===VENUE?'selected':''}>${title(x)}</option>`).join('');
+ sel.onchange=()=>{VENUE=sel.value;DRIVER=null;render()};
+ render()})();
+</script></body></html>

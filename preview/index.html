@@ -1,0 +1,47 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TT Stats · Device Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}body{background:linear-gradient(145deg,#000,#0A0D0F);font-family:'Archivo',system-ui;color:#F5F5F7;min-height:100vh}
+header{padding:18px 24px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,.08)}
+header b{font-weight:900;font-size:17px}header b span{color:#E53935}header small{color:#565F64;font-size:12px}
+.tabs{display:flex;gap:8px;margin-left:auto}
+.tabs button{background:#111416;border:1px solid rgba(255,255,255,.1);color:#C8CCCE;border-radius:20px;padding:7px 16px;font-family:'Archivo';font-size:13px;cursor:pointer}
+.tabs button.on{background:#E53935;border-color:#E53935;color:#fff}
+main{display:flex;justify-content:center;padding:34px 16px;overflow:auto}
+.frame{display:none}.frame.on{display:block}
+.chrome{background:#1c1c1e;border-radius:22px 22px 0 0;padding:10px 14px 8px;display:flex;align-items:center;gap:10px}
+.pill{flex:1;background:#2c2c2e;border-radius:10px;text-align:center;color:#aeaeb2;font-size:12px;padding:6px;font-family:-apple-system,system-ui}
+.dots span{width:12px;height:12px;border-radius:50%;display:inline-block;margin-right:7px}
+.d1{background:#ff5f57}.d2{background:#febc2e}.d3{background:#28c840}
+.statusbar{background:#000;color:#fff;font-size:12px;display:flex;justify-content:space-between;padding:8px 22px 2px;font-family:-apple-system;border-radius:22px 22px 0 0}
+iframe{border:0;background:#000;display:block}
+.shell{box-shadow:0 24px 60px rgba(0,0,0,.6);border-radius:22px;overflow:hidden;border:1px solid rgba(255,255,255,.1)}
+.toolbar{background:#1c1c1e;display:flex;justify-content:space-around;padding:9px 0 22px;color:#0a84ff;font-size:16px}
+.homebar{height:5px;width:130px;background:#fff;border-radius:3px;margin:8px auto 10px;opacity:.85}
+</style></head><body>
+<header><b>TT STATS <span>ENGINE</span></b><small>stroomlabs.com · device preview</small>
+<div class="tabs"><button class="on" data-f="ph">iPhone</button><button data-f="tab">iPad</button><button data-f="dt">Desktop</button></div></header>
+<main>
+<div class="frame on" id="ph"><div class="shell" style="width:393px">
+<div class="statusbar"><span>9:41</span><span>📶 ᯤ 🔋</span></div>
+<div class="chrome" style="border-radius:0"><div class="pill">🔒 stats.stroomracing.com</div></div>
+<iframe src="https://stroomlabs.github.io/tt-stats/" width="393" height="700"></iframe>
+<div class="toolbar"><span>‹</span><span>›</span><span>⇧</span><span>⊞</span><span>▢</span></div><div class="homebar"></div></div></div>
+<div class="frame" id="tab"><div class="shell" style="width:820px;transform-origin:top center" id="tabShell">
+<div class="statusbar"><span>9:41</span><span>📶 ᯤ 🔋</span></div>
+<div class="chrome" style="border-radius:0"><div class="pill">🔒 stats.stroomracing.com</div></div>
+<iframe src="https://stroomlabs.github.io/tt-stats/" width="820" height="1000"></iframe></div></div>
+<div class="frame" id="dt"><div class="shell" style="width:1440px;transform-origin:top center" id="dtShell">
+<div class="chrome"><div class="dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div><div class="pill">🔒 stats.stroomracing.com</div></div>
+<iframe src="https://stroomlabs.github.io/tt-stats/" width="1440" height="860"></iframe></div></div>
+</main>
+<script>
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
+ document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+ document.querySelectorAll('.frame').forEach(f=>f.classList.remove('on'));
+ document.getElementById(b.dataset.f).classList.add('on');fit()});
+function fit(){['tabShell','dtShell'].forEach(id=>{const el=document.getElementById(id);if(!el)return;
+ const w=id==='tabShell'?820:1440;const avail=Math.min(window.innerWidth-40,w);el.style.transform='scale('+(avail/w)+')'})}
+window.addEventListener('resize',fit);fit();
+</script></body></html>

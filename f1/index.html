@@ -44,7 +44,7 @@
       { rd: 14, flag: "🇪🇸", gp: "Spanish Grand Prix",        circuit: "Madring",                                loc: "Madrid, Spain",               date: "Sun Sep 13", time: "9:00 AM",  start: "2026-09-13T09:00:00-04:00", badges: ["CIRCUIT DEBUT"] },
       { rd: 15, flag: "🇦🇿", gp: "Azerbaijan Grand Prix",     circuit: "Baku City Circuit",                      loc: "Baku, Azerbaijan",            date: "Sat Sep 26", time: "7:00 AM",  start: "2026-09-26T07:00:00-04:00", badges: ["SATURDAY RACE"] },
       { rd: 16, flag: "🇸🇬", gp: "Singapore Grand Prix",      circuit: "Marina Bay Street Circuit",              loc: "Singapore",                   date: "Sun Oct 11", time: "8:00 AM",  start: "2026-10-11T08:00:00-04:00", badges: ["SPRINT"] },
-      { rd: 17, flag: "🇺🇸", gp: "United States Grand Prix",  circuit: "Circuit of the Americas",                loc: "Austin, Texas, USA",          date: "Sun Oct 25", time: "3:00 PM",  start: "2026-10-25T15:00:00-04:00", badges: ["IMAX"] },
+      { rd: 17, flag: "🇺🇸", gp: "United States Grand Prix",  circuit: "Circuit of the Americas",                loc: "Austin, Texas, USA",         date: "Sun Oct 25", time: "3:00 PM",  start: "2026-10-25T15:00:00-04:00", badges: ["IMAX"] },
       { rd: 18, flag: "🇲🇽", gp: "Mexico City Grand Prix",    circuit: "Autódromo Hermanos Rodríguez",           loc: "Mexico City, Mexico",         date: "Sun Nov 1",  time: "4:00 PM",  start: "2026-11-01T16:00:00-05:00", badges: [] },
       { rd: 19, flag: "🇧🇷", gp: "São Paulo Grand Prix",      circuit: "Interlagos (Autódromo José Carlos Pace)", loc: "São Paulo, Brazil",          date: "Sun Nov 8",  time: "1:00 PM",  start: "2026-11-08T13:00:00-05:00", badges: [] },
       { rd: 20, flag: "🇺🇸", gp: "Las Vegas Grand Prix",      circuit: "Las Vegas Strip Circuit",                loc: "Las Vegas, Nevada, USA",      date: "Sat Nov 21", time: "10:00 PM", start: "2026-11-21T22:00:00-05:00", badges: ["SATURDAY RACE"] },
@@ -59,14 +59,36 @@
        invent a result.
        ============================================================ */
     const WINNERS = {
-      1: null, // OPERATOR: fill { driver, team, carNumber, ... } for the Australian GP, or leave null to show the pending state
-      2: null, // OPERATOR: fill for the Chinese GP, or leave null to show the pending state
+      // Verified 2026-07-17 · winners, times, margins from formula1.com official results.
+      // Rd 3 full stat line (fastest lap, laps) operator-verified 2026-03-21 in the StroomHelix graph.
+      // Rounds 10+ : add entries only as results are verified. Never invent one.
+      1: { driver: "George Russell", team: "Mercedes-AMG PETRONAS F1 Team", carNumber: "63",
+           winningTime: "1:23:06.801", marginSeconds: 2.974,
+           context: "Won from pole · opener of the new-regulations era" },
+      2: { driver: "Kimi Antonelli", team: "Mercedes-AMG PETRONAS F1 Team", carNumber: "12",
+           winningTime: "1:33:15.607", marginSeconds: 5.515 },
       3: { driver: "Kimi Antonelli", team: "Mercedes-AMG PETRONAS F1 Team", carNumber: "12",
-           winningTime: "1:28:03.403", marginSeconds: 13.722, fastestLap: "1:32.432", laps: 53 },
-      // Rounds 4+ : add entries here as results are verified in the graph. Never invent one.
+           winningTime: "1:28:03.403", marginSeconds: 13.722, fastestLap: "1:32.432", laps: 53,
+           context: "P2 gap +13.722s · 53 laps at Suzuka · winner also set fastest lap (1:32.432)" },
+      4: { driver: "Kimi Antonelli", team: "Mercedes-AMG PETRONAS F1 Team", carNumber: "12",
+           winningTime: "1:33:19.273", marginSeconds: 3.264 },
+      5: { driver: "Kimi Antonelli", team: "Mercedes-AMG PETRONAS F1 Team", carNumber: "12",
+           winningTime: "1:28:15.758", marginSeconds: 10.768 },
+      6: { driver: "Kimi Antonelli", team: "Mercedes-AMG PETRONAS F1 Team", carNumber: "12",
+           winningTime: "2:23:31.243", marginSeconds: 6.271,
+           context: "Fifth consecutive victory" },
+      7: { driver: "Lewis Hamilton", team: "Scuderia Ferrari", carNumber: "44",
+           winningTime: "1:32:28.105", marginSeconds: 19.561,
+           context: "Won from P9 · Ferrari's first win of 2026 · seven retirements" },
+      8: { driver: "George Russell", team: "Mercedes-AMG PETRONAS F1 Team", carNumber: "63",
+           winningTime: "1:26:37.979", marginSeconds: 1.611,
+           context: "+1.611s over Verstappen · Antonelli completed the podium" },
+      9: { driver: "Charles Leclerc", team: "Scuderia Ferrari", carNumber: "16",
+           winningTime: "1:27:11.335", marginSeconds: 0.427,
+           context: "Leclerc's first win of 2026 · top three covered by 0.772s" },
     };
 
-    const SEASON_NOTE = "Bahrain GP and Saudi Arabian GP cancelled (Middle East conflict); Emilia-Romagna GP at Imola dropped; Spanish GP moved to the brand-new Madring part-street circuit in Madrid (circuit debut), with Barcelona-Catalunya keeping its own renamed round. Season is 22 races, not 24.";
+    const SEASON_NOTE = "Bahrain GP and Saudi Arabian GP were pulled from their April slots over conflict in the Middle East, cutting the season from a planned 24 rounds to 22; the withdrawal was announced around the Chinese GP and never clearly framed as scrapped versus postponed. Emilia-Romagna GP at Imola dropped; Spanish GP moved to the brand-new Madring part-street circuit in Madrid (circuit debut), with Barcelona-Catalunya keeping its own renamed round. Calendar watch, Jul 17: F1 president Domenicali confirmed hope of restoring Bahrain — the more logistically viable of the two — in an Oct 2–4 slot between Azerbaijan and Singapore, which would lift the season to 23 races; the decision must come before the summer break that begins after the Hungarian GP on Jul 26. Domenicali expects the season-closing Qatar (Nov 27–29) and Abu Dhabi (Dec 4–6) rounds to go ahead as planned.";
     const BROADCAST = "Apple TV · Radio: BBC 5 Live via SiriusXM Ch 160/205";
     const RACE_WINDOW_MS = 3 * 60 * 60 * 1000; // a round counts as complete 3h after lights out
 
@@ -288,7 +310,7 @@
       );
     }
 
-    function WinnerBlock({ w, showContext }) {
+    function WinnerBlock({ w }) {
       return (
         <div className="win">
           <div className="winlab">Winner</div>
@@ -308,10 +330,8 @@
               <div className="wstat"><span className="k">Laps</span><span className="v">{w.laps}</span></div>
             )}
           </div>
-          {showContext && (
-            <div className="winctx num">
-              P2 gap +13.722s · 53 laps at Suzuka · winner also set fastest lap (1:32.432)
-            </div>
+          {w.context && (
+            <div className="winctx num">{w.context}</div>
           )}
         </div>
       );
@@ -363,7 +383,7 @@
           )}
 
           {status === "won" && winner && (
-            <WinnerBlock w={winner} showContext={race.rd === 3} />
+            <WinnerBlock w={winner} />
           )}
 
           {status === "pending" && (

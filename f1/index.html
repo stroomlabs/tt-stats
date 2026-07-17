@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Stroom Racing — F1 2026 Race Calendar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #111; overflow-x: hidden; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    /* ============================================================
+       GROUND TRUTH — 2026 F1 CALENDAR
+       Source: StroomHelix graph, corrected 2026-03-20. 22 rounds.
+       Race start ISO strings carry explicit US-Eastern offsets
+       (EST -05:00 / EDT -04:00) so status math is absolute-time
+       correct in any viewer timezone.
+       ============================================================ */
+    const RACES = [
+      { rd: 1,  flag: "🇦🇺", gp: "Australian Grand Prix",     circuit: "Albert Park Circuit",                    loc: "Melbourne, Australia",        date: "Sun Mar 8",  time: "11:00 PM", timeNote: "Sat night ET", start: "2026-03-07T23:00:00-05:00", badges: [] },
+      { rd: 2,  flag: "🇨🇳", gp: "Chinese Grand Prix",        circuit: "Shanghai International Circuit",         loc: "Shanghai, China",             date: "Sun Mar 15", time: "3:00 AM",  start: "2026-03-15T03:00:00-04:00", badges: ["SPRINT"] },
+      { rd: 3,  flag: "🇯🇵", gp: "Japanese Grand Prix",       circuit: "Suzuka Circuit",                         loc: "Suzuka, Japan",               date: "Sun Mar 29", time: "1:00 AM",  start: "2026-03-29T01:00:00-04:00", badges: [] },
+      { rd: 4,  flag: "🇺🇸", gp: "Miami Grand Prix",          circuit: "Miami International Autodrome",          loc: "Miami, Florida, USA",         date: "Sun May 3",  time: "4:00 PM",  start: "2026-05-03T16:00:00-04:00", badges: ["SPRINT", "IMAX"] },
+      { rd: 5,  flag: "🇨🇦", gp: "Canadian Grand Prix",       circuit: "Circuit Gilles Villeneuve",              loc: "Montréal, Canada",            date: "Sun May 24", time: "2:00 PM",  start: "2026-05-24T14:00:00-04:00", badges: ["SPRINT", "NETFLIX SIMULCAST"] },
+      { rd: 6,  flag: "🇲🇨", gp: "Monaco Grand Prix",         circuit: "Circuit de Monaco",                      loc: "Monte Carlo, Monaco",         date: "Sun Jun 7",  time: "9:00 AM",  start: "2026-06-07T09:00:00-04:00", badges: ["IMAX"] },
+      { rd: 7,  flag: "🇪🇸", gp: "Barcelona-Catalunya Grand Prix", circuit: "Circuit de Barcelona-Catalunya",    loc: "Montmeló, Spain",             date: "Sun Jun 14", time: "9:00 AM",  start: "2026-06-14T09:00:00-04:00", badges: [] },
+      { rd: 8,  flag: "🇦🇹", gp: "Austrian Grand Prix",       circuit: "Red Bull Ring",                          loc: "Spielberg, Austria",          date: "Sun Jun 28", time: "9:00 AM",  start: "2026-06-28T09:00:00-04:00", badges: [] },
+      { rd: 9,  flag: "🇬🇧", gp: "British Grand Prix",        circuit: "Silverstone Circuit",                    loc: "Silverstone, UK",             date: "Sun Jul 5",  time: "10:00 AM", start: "2026-07-05T10:00:00-04:00", badges: ["SPRINT", "IMAX"] },
+      { rd: 10, flag: "🇧🇪", gp: "Belgian Grand Prix",        circuit: "Circuit de Spa-Francorchamps",           loc: "Stavelot, Belgium",           date: "Sun Jul 19", time: "9:00 AM",  start: "2026-07-19T09:00:00-04:00", badges: [] },
+      { rd: 11, flag: "🇭🇺", gp: "Hungarian Grand Prix",      circuit: "Hungaroring",                            loc: "Mogyoród, Hungary",           date: "Sun Jul 26", time: "9:00 AM",  start: "2026-07-26T09:00:00-04:00", badges: [] },
+      { rd: 12, flag: "🇳🇱", gp: "Dutch Grand Prix",          circuit: "Circuit Zandvoort",                      loc: "Zandvoort, Netherlands",      date: "Sun Aug 23", time: "9:00 AM",  start: "2026-08-23T09:00:00-04:00", badges: ["SPRINT", "FINAL DUTCH GP"] },
+      { rd: 13, flag: "🇮🇹", gp: "Italian Grand Prix",        circuit: "Autodromo Nazionale Monza",              loc: "Monza, Italy",                date: "Sun Sep 6",  time: "9:00 AM",  start: "2026-09-06T09:00:00-04:00", badges: ["IMAX"] },
+      { rd: 14, flag: "🇪🇸", gp: "Spanish Grand Prix",        circuit: "Madring",                                loc: "Madrid, Spain",               date: "Sun Sep 13", time: "9:00 AM",  start: "2026-09-13T09:00:00-04:00", badges: ["CIRCUIT DEBUT"] },
+      { rd: 15, flag: "🇦🇿", gp: "Azerbaijan Grand Prix",     circuit: "Baku City Circuit",                      loc: "Baku, Azerbaijan",            date: "Sat Sep 26", time: "7:00 AM",  start: "2026-09-26T07:00:00-04:00", badges: ["SATURDAY RACE"] },
+      { rd: 16, flag: "🇸🇬", gp: "Singapore Grand Prix",      circuit: "Marina Bay Street Circuit",              loc: "Singapore",                   date: "Sun Oct 11", time: "8:00 AM",  start: "2026-10-11T08:00:00-04:00", badges: ["SPRINT"] },
+      { rd: 17, flag: "🇺🇸", gp: "United States Grand Prix",  circuit: "Circuit of the Americas",                loc: "Austin, Texas, USA",          date: "Sun Oct 25", time: "3:00 PM",  start: "2026-10-25T15:00:00-04:00", badges: ["IMAX"] },
+      { rd: 18, flag: "🇲🇽", gp: "Mexico City Grand Prix",    circuit: "Autódromo Hermanos Rodríguez",           loc: "Mexico City, Mexico",         date: "Sun Nov 1",  time: "4:00 PM",  start: "2026-11-01T16:00:00-05:00", badges: [] },
+      { rd: 19, flag: "🇧🇷", gp: "São Paulo Grand Prix",      circuit: "Interlagos (Autódromo José Carlos Pace)", loc: "São Paulo, Brazil",          date: "Sun Nov 8",  time: "1:00 PM",  start: "2026-11-08T13:00:00-05:00", badges: [] },
+      { rd: 20, flag: "🇺🇸", gp: "Las Vegas Grand Prix",      circuit: "Las Vegas Strip Circuit",                loc: "Las Vegas, Nevada, USA",      date: "Sat Nov 21", time: "10:00 PM", start: "2026-11-21T22:00:00-05:00", badges: ["SATURDAY RACE"] },
+      { rd: 21, flag: "🇶🇦", gp: "Qatar Grand Prix",          circuit: "Lusail International Circuit",           loc: "Lusail, Qatar",               date: "Sun Nov 29", time: "10:00 AM", start: "2026-11-29T10:00:00-05:00", badges: [] },
+      { rd: 22, flag: "🇦🇪", gp: "Abu Dhabi Grand Prix",      circuit: "Yas Marina Circuit",                     loc: "Abu Dhabi, UAE",              date: "Sun Dec 6",  time: "8:00 AM",  start: "2026-12-06T08:00:00-05:00", badges: ["SEASON FINALE"] },
+    ];
+
+    /* ============================================================
+       GROUND TRUTH — WINNERS (verified from the StroomHelix graph)
+       Render ONLY these. A null round past its date shows the
+       "RESULT PENDING · StroomHelix verification" state. Never
+       invent a result.
+       ============================================================ */
+    const WINNERS = {
+      1: null, // OPERATOR: fill { driver, team, carNumber, ... } for the Australian GP, or leave null to show the pending state
+      2: null, // OPERATOR: fill for the Chinese GP, or leave null to show the pending state
+      3: { driver: "Kimi Antonelli", team: "Mercedes-AMG PETRONAS F1 Team", carNumber: "12",
+           winningTime: "1:28:03.403", marginSeconds: 13.722, fastestLap: "1:32.432", laps: 53 },
+      // Rounds 4+ : add entries here as results are verified in the graph. Never invent one.
+    };
+
+    const SEASON_NOTE = "Bahrain GP and Saudi Arabian GP cancelled (Middle East conflict); Emilia-Romagna GP at Imola dropped; Spanish GP moved to the brand-new Madring part-street circuit in Madrid (circuit debut), with Barcelona-Catalunya keeping its own renamed round. Season is 22 races, not 24.";
+    const BROADCAST = "Apple TV · Radio: BBC 5 Live via SiriusXM Ch 160/205";
+    const RACE_WINDOW_MS = 3 * 60 * 60 * 1000; // a round counts as complete 3h after lights out
+
+    const BADGE_THEMES = {
+      "SPRINT":            { color: "#E53935", bg: "rgba(229,57,53,.10)",  border: "rgba(229,57,53,.38)" },
+      "SATURDAY RACE":     { color: "#A78BFA", bg: "rgba(167,139,250,.10)", border: "rgba(167,139,250,.38)" },
+      "IMAX":              { color: "#F5F5F7", bg: "rgba(255,255,255,.07)", border: "rgba(255,255,255,.22)" },
+      "NETFLIX SIMULCAST": { color: "#E50914", bg: "rgba(229,9,20,.10)",   border: "rgba(229,9,20,.38)" },
+      "CIRCUIT DEBUT":     { color: "#00A19B", bg: "rgba(0,161,155,.10)",  border: "rgba(0,161,155,.40)" },
+      "FINAL DUTCH GP":    { color: "#FFC72C", bg: "rgba(255,199,44,.08)", border: "rgba(255,199,44,.36)" },
+      "SEASON FINALE":     { color: "#FFC72C", bg: "rgba(255,199,44,.08)", border: "rgba(255,199,44,.36)" },
+    };
+
+    const CSS = `
+      html { scroll-behavior: smooth; }
+      .page {
+        min-height: 100vh;
+        font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+        color: #F5F5F7;
+        background: radial-gradient(1100px 480px at 50% -8%, rgba(229,57,53,0.05), rgba(229,57,53,0) 62%), #111;
+      }
+      .num { font-variant-numeric: tabular-nums; }
+
+      /* ---------- header ---------- */
+      .hd {
+        position: sticky; top: 0; z-index: 60;
+        background: rgba(17,17,17,.94);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-bottom: 4px solid #E53935;
+      }
+      .hd-row {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 14px; padding: 14px 26px 10px;
+        max-width: 1120px; margin: 0 auto;
+      }
+      .wordmark { font-weight: 800; font-style: italic; font-size: 17px; letter-spacing: .10em; white-space: nowrap; }
+      .wordmark .ghost { color: #565F64; font-weight: 800; margin-left: 8px; }
+      .hd-title {
+        font-size: 11px; font-weight: 600; letter-spacing: .12em;
+        color: #C8CCCE; text-transform: uppercase; text-align: center; flex: 1;
+      }
+      .hd-right { width: 120px; text-align: right; font-size: 9px; letter-spacing: .12em; color: #565F64; text-transform: uppercase; }
+      .strip {
+        max-width: 1120px; margin: 0 auto; padding: 0 26px 6px;
+        font-size: 11px; font-weight: 600; letter-spacing: .10em;
+        color: #C8CCCE; text-transform: uppercase; white-space: nowrap;
+        overflow-x: auto; scrollbar-width: none;
+      }
+      .strip::-webkit-scrollbar { display: none; }
+      .strip .acc { color: #E53935; }
+      .broadcast {
+        max-width: 1120px; margin: 0 auto; padding: 0 26px 12px;
+        font-size: 10px; letter-spacing: .08em; color: #565F64; text-transform: uppercase;
+      }
+
+      /* ---------- filters ---------- */
+      .filters { max-width: 1120px; margin: 0 auto; padding: 20px 26px 4px; display: flex; gap: 8px; flex-wrap: wrap; }
+      .ftab {
+        font-family: inherit; font-size: 10px; font-weight: 600; letter-spacing: .12em;
+        text-transform: uppercase; color: #C8CCCE;
+        background: transparent; border: 1px solid rgba(255,255,255,.07);
+        border-radius: 999px; padding: 7px 15px; cursor: pointer;
+        transition: color .15s, border-color .15s, background .15s;
+      }
+      .ftab:hover { border-color: rgba(255,255,255,.2); color: #F5F5F7; }
+      .ftab.active { color: #E53935; border-color: rgba(229,57,53,.55); background: rgba(229,57,53,.10); }
+
+      /* ---------- timeline ---------- */
+      .tl { max-width: 1120px; margin: 0 auto; padding: 18px 26px 8px; position: relative; }
+      .tl-line { display: none; }
+      .row { position: relative; }
+      .rail { display: none; }
+
+      @media (min-width: 900px) {
+        .tl { padding-left: 26px; }
+        .tl-line {
+          display: block; position: absolute;
+          left: 47px; top: 34px; bottom: 34px; width: 2px;
+          background: rgba(255,255,255,.07);
+        }
+        .row { display: grid; grid-template-columns: 44px 1fr; gap: 0 22px; }
+        .rail { display: block; position: relative; }
+        .dot {
+          position: absolute; left: 50%; top: 26px; transform: translateX(-50%);
+          width: 12px; height: 12px; border-radius: 50%;
+          border: 2px solid #E53935; background: #111; z-index: 2;
+        }
+        .dot.done { background: #E53935; }
+        .dot.next { box-shadow: 0 0 0 5px rgba(229,57,53,.18), 0 0 14px rgba(229,57,53,.5); }
+      }
+
+      /* ---------- cards ---------- */
+      .card {
+        background: rgba(255,255,255,.03);
+        border: 1px solid rgba(255,255,255,.07);
+        border-radius: 12px;
+        padding: 18px 20px;
+        margin-bottom: 14px;
+        opacity: 0;
+        animation: fadeUp .4s ease-out forwards;
+        animation-delay: calc(var(--i) * 40ms);
+        transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+      }
+      .card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,.16); }
+      .card.next {
+        border-color: rgba(229,57,53,.60);
+        box-shadow: 0 0 0 1px rgba(229,57,53,.30), 0 0 34px rgba(229,57,53,.16);
+      }
+      .card.next:hover { box-shadow: 0 0 0 1px rgba(229,57,53,.45), 0 0 40px rgba(229,57,53,.22); }
+      .card.mut { background: rgba(255,255,255,.02); }
+      .card.mut .gp { color: #C8CCCE; }
+      @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+      .cr1 { display: flex; align-items: flex-start; gap: 14px; }
+      .rdno { color: #E53935; font-weight: 800; font-size: 13px; letter-spacing: .08em; padding-top: 6px; min-width: 52px; white-space: nowrap; }
+      .flagbox { font-size: 28px; line-height: 1.2; padding-top: 1px; }
+      .card.next .flagbox { font-size: 40px; }
+      .titlecol { flex: 1; min-width: 0; }
+      .gp { font-weight: 700; font-size: 16px; letter-spacing: .02em; line-height: 1.35; }
+      .sub { color: #565F64; font-size: 11px; letter-spacing: .05em; margin-top: 3px; line-height: 1.5; }
+      .statuscell { padding-top: 4px; }
+
+      .when { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 12px; font-weight: 600; color: #C8CCCE; flex-wrap: wrap; }
+      .etchip {
+        font-size: 9px; font-weight: 600; letter-spacing: .14em; color: #565F64;
+        border: 1px solid rgba(255,255,255,.07); border-radius: 4px; padding: 2px 6px;
+      }
+      .timenote { color: #565F64; font-weight: 400; font-size: 11px; }
+
+      .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 11px; }
+      .badge {
+        font-size: 10px; font-weight: 600; letter-spacing: .10em; text-transform: uppercase;
+        padding: 3px 10px; border-radius: 999px; border: 1px solid; white-space: nowrap;
+      }
+
+      .chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 10px; font-weight: 600; letter-spacing: .10em; text-transform: uppercase;
+        padding: 4px 11px; border-radius: 999px; white-space: nowrap;
+      }
+      .chip.nextup { color: #E53935; background: rgba(229,57,53,.10); border: 1px solid rgba(229,57,53,.45); }
+      .chip.pend { color: #FFB300; background: rgba(255,179,0,.07); border: 1px solid rgba(255,179,0,.32); margin-top: 13px; }
+
+      /* ---------- winner block ---------- */
+      .win { margin-top: 13px; border-left: 3px solid #FFC72C; padding: 6px 0 6px 14px; }
+      .winlab { font-size: 9px; font-weight: 600; letter-spacing: .18em; color: #FFC72C; text-transform: uppercase; }
+      .windrv { font-weight: 800; font-size: 17px; margin-top: 4px; letter-spacing: .01em; }
+      .winteam { font-size: 11px; color: #C8CCCE; margin-top: 3px; letter-spacing: .03em; }
+      .winstats { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 9px; }
+      .wstat { display: flex; flex-direction: column; gap: 2px; }
+      .wstat .k { font-size: 8px; letter-spacing: .16em; color: #565F64; text-transform: uppercase; }
+      .wstat .v { font-size: 12px; font-weight: 600; color: #F5F5F7; }
+      .winctx { margin-top: 8px; font-size: 10px; color: #565F64; letter-spacing: .04em; line-height: 1.6; }
+
+      /* ---------- countdown ---------- */
+      .cd { display: flex; gap: 22px; margin-top: 14px; }
+      .cdu { display: flex; flex-direction: column; gap: 3px; }
+      .cdu .v { font-size: 24px; font-weight: 800; color: #F5F5F7; min-width: 2.6ch; }
+      .card.next .cdu .v { color: #E53935; }
+      .cdu .k { font-size: 8px; letter-spacing: .18em; color: #565F64; text-transform: uppercase; }
+
+      /* ---------- footnote + footer ---------- */
+      .note {
+        max-width: 1120px; margin: 26px auto 0; padding: 18px 26px 0;
+        border-top: 1px solid rgba(255,255,255,.07);
+        color: #C8CCCE; font-size: 11px; line-height: 1.75; letter-spacing: .02em;
+      }
+      .note .lbl { color: #E53935; font-weight: 700; font-size: 9px; letter-spacing: .16em; text-transform: uppercase; display: block; margin-bottom: 6px; }
+      .foot { max-width: 1120px; margin: 0 auto; padding: 22px 26px 44px; color: #565F64; font-size: 10px; letter-spacing: .06em; line-height: 2; }
+
+      @media (max-width: 640px) {
+        .hd-row { padding: 12px 20px 8px; }
+        .hd-right { display: none; }
+        .hd-title { text-align: right; }
+        .strip, .broadcast { padding-left: 20px; padding-right: 20px; }
+        .filters, .tl, .note, .foot { padding-left: 20px; padding-right: 20px; }
+        .cr1 { flex-wrap: wrap; }
+        .rdno { min-width: 0; }
+        .statuscell { width: 100%; order: 4; padding-top: 0; margin-top: 10px; }
+        .card.next .statuscell { margin-top: 4px; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * { animation: none !important; transition: none !important; }
+        .card { opacity: 1 !important; }
+        html { scroll-behavior: auto; }
+      }
+    `;
+
+    /* ============================================================ */
+
+    const pad2 = (n) => String(n).padStart(2, "0");
+
+    function useNow() {
+      const [now, setNow] = useState(() => new Date());
+      useEffect(() => {
+        const t = setInterval(() => setNow(new Date()), 1000);
+        return () => clearInterval(t);
+      }, []);
+      return now;
+    }
+
+    function splitCountdown(ms) {
+      const d = Math.max(0, ms);
+      return {
+        days: Math.floor(d / 86400000),
+        hrs: Math.floor((d % 86400000) / 3600000),
+        min: Math.floor((d % 3600000) / 60000),
+      };
+    }
+
+    function Badge({ label }) {
+      const t = BADGE_THEMES[label] || { color: "#C8CCCE", bg: "rgba(255,255,255,.05)", border: "rgba(255,255,255,.15)" };
+      return (
+        <span className="badge" style={{ color: t.color, background: t.bg, borderColor: t.border }}>
+          {label}
+        </span>
+      );
+    }
+
+    function WinnerBlock({ w, showContext }) {
+      return (
+        <div className="win">
+          <div className="winlab">Winner</div>
+          <div className="windrv">{w.driver}</div>
+          <div className="winteam">{w.team} · #{w.carNumber}</div>
+          <div className="winstats num">
+            {w.winningTime != null && (
+              <div className="wstat"><span className="k">Time</span><span className="v">{w.winningTime}</span></div>
+            )}
+            {w.marginSeconds != null && (
+              <div className="wstat"><span className="k">Margin</span><span className="v">+{w.marginSeconds.toFixed(3)}s</span></div>
+            )}
+            {w.fastestLap != null && (
+              <div className="wstat"><span className="k">Fastest Lap</span><span className="v">{w.fastestLap}</span></div>
+            )}
+            {w.laps != null && (
+              <div className="wstat"><span className="k">Laps</span><span className="v">{w.laps}</span></div>
+            )}
+          </div>
+          {showContext && (
+            <div className="winctx num">
+              P2 gap +13.722s · 53 laps at Suzuka · winner also set fastest lap (1:32.432)
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function Countdown({ targetMs, nowMs }) {
+      const c = splitCountdown(targetMs - nowMs);
+      return (
+        <div className="cd num" aria-label="Countdown to lights out">
+          <div className="cdu"><span className="v">{pad2(c.days)}</span><span className="k">Days</span></div>
+          <div className="cdu"><span className="v">{pad2(c.hrs)}</span><span className="k">Hrs</span></div>
+          <div className="cdu"><span className="v">{pad2(c.min)}</span><span className="k">Min</span></div>
+        </div>
+      );
+    }
+
+    function RaceCard({ race, status, nowMs, index }) {
+      const winner = WINNERS[race.rd] || null;
+      const cls =
+        "card" +
+        (status === "next" ? " next" : "") +
+        (status === "pending" ? " mut" : "");
+      return (
+        <div className={cls} style={{ "--i": index }}>
+          <div className="cr1">
+            <div className="rdno num">RD {pad2(race.rd)}</div>
+            <div className="flagbox" aria-hidden="true">{race.flag}</div>
+            <div className="titlecol">
+              <div className="gp">{race.gp}</div>
+              <div className="sub">{race.circuit} · {race.loc}</div>
+            </div>
+            {status === "next" && (
+              <div className="statuscell"><span className="chip nextup">Next Up</span></div>
+            )}
+          </div>
+
+          <div className="when num">
+            <span>{race.date}</span>
+            <span>·</span>
+            <span>{race.time}</span>
+            <span className="etchip">ET</span>
+            {race.timeNote && <span className="timenote">({race.timeNote})</span>}
+          </div>
+
+          {race.badges.length > 0 && (
+            <div className="badges">
+              {race.badges.map((b) => <Badge key={b} label={b} />)}
+            </div>
+          )}
+
+          {status === "won" && winner && (
+            <WinnerBlock w={winner} showContext={race.rd === 3} />
+          )}
+
+          {status === "pending" && (
+            <span className="chip pend">Result Pending · StroomHelix Verification</span>
+          )}
+
+          {status === "next" && (
+            <Countdown targetMs={race.startMs} nowMs={nowMs} />
+          )}
+        </div>
+      );
+    }
+
+    function App() {
+      const now = useNow();
+      const nowMs = now.getTime();
+      const [filter, setFilter] = useState("ALL");
+
+      const races = useMemo(
+        () => RACES.map((r) => ({ ...r, startMs: Date.parse(r.start) })),
+        []
+      );
+
+      const done = races.map((r) => nowMs > r.startMs + RACE_WINDOW_MS);
+      const completedCount = done.filter(Boolean).length;
+      const nextIdx = done.indexOf(false);
+
+      const statusOf = (i) => {
+        if (done[i]) return WINNERS[races[i].rd] ? "won" : "pending";
+        return i === nextIdx ? "next" : "upcoming";
+      };
+
+      const visible = races
+        .map((r, i) => ({ race: r, status: statusOf(i), i }))
+        .filter(({ race, status }) => {
+          if (filter === "COMPLETED") return status === "won" || status === "pending";
+          if (filter === "UPCOMING") return status === "next" || status === "upcoming";
+          if (filter === "SPRINT") return race.badges.indexOf("SPRINT") !== -1;
+          return true;
+        });
+
+      let stripNext = "SEASON COMPLETE";
+      if (nextIdx !== -1) {
+        const c = splitCountdown(races[nextIdx].startMs - nowMs);
+        stripNext = "NEXT: " + races[nextIdx].gp.toUpperCase() + " IN " +
+          pad2(c.days) + "D " + pad2(c.hrs) + "H " + pad2(c.min) + "M";
+      }
+
+      return (
+        <React.Fragment>
+          <style>{CSS}</style>
+          <div className="page">
+            <header className="hd">
+              <div className="hd-row">
+                <div className="wordmark">STROOM<span className="ghost">RACING</span></div>
+                <div className="hd-title">F1 2026 Race Calendar</div>
+                <div className="hd-right">Dark · Live</div>
+              </div>
+              <div className="strip num">
+                22 ROUNDS <span className="acc">·</span> {completedCount} COMPLETE <span className="acc">·</span> {stripNext}
+              </div>
+              <div className="broadcast">{BROADCAST}</div>
+            </header>
+
+            <nav className="filters" aria-label="Filter rounds">
+              {["ALL", "COMPLETED", "UPCOMING", "SPRINT"].map((f) => (
+                <button
+                  key={f}
+                  className={"ftab" + (filter === f ? " active" : "")}
+                  onClick={() => setFilter(f)}
+                >
+                  {f}
+                </button>
+              ))}
+            </nav>
+
+            <main className="tl">
+              <div className="tl-line" aria-hidden="true"></div>
+              {visible.map(({ race, status, i }, renderIdx) => (
+                <div className="row" key={race.rd}>
+                  <div className="rail" aria-hidden="true">
+                    <div className={
+                      "dot" +
+                      (status === "won" || status === "pending" ? " done" : "") +
+                      (status === "next" ? " next" : "")
+                    }></div>
+                  </div>
+                  <RaceCard race={race} status={status} nowMs={nowMs} index={renderIdx} />
+                </div>
+              ))}
+            </main>
+
+            <section className="note">
+              <span className="lbl">Season Notes</span>
+              {SEASON_NOTE}
+            </section>
+
+            <footer className="foot">
+              <div>Fastest trusted updates · stroomracing.com</div>
+              <div>Every claim sourced · Every correction logged</div>
+              <div>data powered by StroomHelix</div>
+            </footer>
+          </div>
+        </React.Fragment>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
